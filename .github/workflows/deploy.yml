@@ -1,47 +1,75 @@
-name: Deploy Flask App to Azure
+name: Build and Deploy to AKS
 
 on:
   push:
     branches:
-      - main  # Runs deployment on every push to 'main'
+      - main
+  workflow_dispatch:
+
+env:
+  AZURE_CONTAINER_REGISTRY: "myaskregistry01"  # Replace with your ACR name
+  CONTAINER_NAME: "flask-app"  # Replace with your container name
+  RESOURCE_GROUP: "zod-rg"  # Replace with your resource group
+  CLUSTER_NAME: "MyAKSCluster"  # Replace with your AKS cluster name
+  DEPLOYMENT_MANIFEST_PATH: ""  # Path to your Kubernetes manifest file
 
 jobs:
-  deploy:
-    runs-on: ubuntu-latest
+  buildImage:
     permissions:
-      id-token: write
       contents: read
-
+      id-token: write
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Log in to Azure
+      - name: Azure Login
         uses: azure/login@v1
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          auth-type: IDENTITY  # OIDC Login
 
-      - name: Verify Azure Login
-        run: az account show
-
-      - name: Build and Push Docker Image
+      - name: Build and Push Image to ACR
         run: |
-          docker build -t my-flask-app .
-          echo "${{ secrets.AZURE_CONTAINER_REGISTRY_PASSWORD }}" | docker login myregistry.azurecr.io -u ${{ secrets.AZURE_CONTAINER_REGISTRY_USERNAME }} --password-stdin
-          docker tag my-flask-app myregistry.azurecr.io/my-flask-app:latest
-          docker push myregistry.azurecr.io/my-flask-app:latest
+          az acr build --image ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.CONTAINER_NAME }}:${{ github.sha }} \
+          --registry ${{ env.AZURE_CONTAINER_REGISTRY }} -g ${{ env.RESOURCE_GROUP }} .
 
-      - name: Deploy to Azure Web App
-        run: |
-          az webapp config container set --name ${{ secrets.AZURE_WEBAPP_NAME }} \
-            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
-            --docker-custom-image-name myregistry.azurecr.io/my-flask-app:latest \
-            --docker-registry-server-url https://myregistry.azurecr.io \
-            --docker-registry-server-user ${{ secrets.AZURE_CONTAINER_REGISTRY_USERNAME }} \
-            --docker-registry-server-password ${{ secrets.AZURE_CONTAINER_REGISTRY_PASSWORD }}
+  deploy:
+    needs: buildImage
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-      - name: Restart Azure Web App
-        run: az webapp restart --name ${{ secrets.AZURE_WEBAPP_NAME }} --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }}
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Set Up kubelogin for Non-Interactive Login
+        uses: azure/use-kubelogin@v1
+        with:
+          kubelogin-version: 'v0.0.25'
+
+      - name: Get AKS Context
+        uses: azure/aks-set-context@v3
+        with:
+          resource-group: ${{ env.RESOURCE_GROUP }}
+          cluster-name: ${{ env.CLUSTER_NAME }}
+          admin: 'false'
+          use-kubelogin: 'true'
+
+      - name: Deploy to AKS
+        uses: Azure/k8s-deploy@v4
+        with:
+          action: deploy
+          manifests: ${{ env.DEPLOYMENT_MANIFEST_PATH }}
+          images: |
+            ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.CONTAINER_NAME }}:${{ github.sha }}

@@ -5,40 +5,42 @@ on:
     branches:
       - main
 
+permissions:
+  id-token: write  # ✅ Needed for GitHub Actions to authenticate with Azure
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
 
     steps:
-      # ✅ Checkout Code
+      # 🔹 Checkout repository
       - name: Checkout Code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
-      # ✅ Log in to Azure using Service Principal (Fixed)
-      - name: Log in to Azure
+      # 🔹 Log in to Azure using OpenID Connect (OIDC)
+      - name: Azure Login
         uses: azure/login@v1
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      # ✅ Log in to Azure Container Registry (ACR)
+      # 🔹 Log in to Azure Container Registry (ACR)
       - name: Log in to ACR
-        run: az acr login --name ${{ secrets.ACR_NAME }}
+        run: az acr login --name mycontainerregistry
 
-      # ✅ Build and Push Docker Image
+      # 🔹 Build and Push Docker Image
       - name: Build and Push Docker Image
         run: |
-          docker build -t ${{ secrets.ACR_NAME }}.azurecr.io/flask-app:${{ github.sha }} .
-          docker push ${{ secrets.ACR_NAME }}.azurecr.io/flask-app:${{ github.sha }}
+          docker build -t mycontainerregistry.azurecr.io/flask-app:${{ github.sha }} .
+          docker push mycontainerregistry.azurecr.io/flask-app:${{ github.sha }}
 
-      # ✅ Get AKS Credentials
+      # 🔹 Get AKS Credentials
       - name: Get AKS Credentials
-        run: az aks get-credentials --resource-group ${{ secrets.AKS_RESOURCE_GROUP }} --name ${{ secrets.AKS_CLUSTER_NAME }}
+        run: az aks get-credentials --resource-group MyResourceGroup --name MyAKSCluster
 
-      # ✅ Deploy to AKS
+      # 🔹 Deploy to AKS
       - name: Deploy to AKS
         run: |
-          kubectl set image deployment/flask-app flask-app=${{ secrets.ACR_NAME }}.azurecr.io/flask-app:${{ github.sha }}
+          kubectl set image deployment/flask-app flask-app=mycontainerregistry.azurecr.io/flask-app:${{ github.sha }}
           kubectl rollout status deployment/flask-app

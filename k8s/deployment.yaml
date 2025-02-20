@@ -1,23 +1,23 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: my-app
+  name: flask-app
   namespace: default
 spec:
   replicas: 2  # Number of pods
   selector:
     matchLabels:
-      app: my-app
+      app: flask-app
   template:
     metadata:
       labels:
-        app: my-app
+        app: flask-app
     spec:
       containers:
-        - name: my-app-container
-          image: myacr.azurecr.io/your-container-name:latest  # Replace with your ACR details
+        - name: flask-app-container
+          image: myaskregistry01.azurecr.io/flask-app:latest  # Replace with your ACR details
           ports:
-            - containerPort: 80  # Port your app runs on
+            - containerPort: 5000  # Port your app runs on
           env:
             - name: ENV_VARIABLE
               value: "production"
@@ -25,12 +25,12 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: my-app-service
+  name: flask-app-service
 spec:
   selector:
-    app: my-app
+    app: flask-app
   ports:
     - protocol: TCP
       port: 80
-      targetPort: 80
+      targetPort: 5000
   type: LoadBalancer

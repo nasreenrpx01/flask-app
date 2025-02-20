@@ -11,7 +11,7 @@ env:
   CONTAINER_NAME: "flask-app"  # Replace with your container name
   RESOURCE_GROUP: "zod-rg"  # Replace with your resource group
   CLUSTER_NAME: "MyAKSCluster"  # Replace with your AKS cluster name
-  DEPLOYMENT_MANIFEST_PATH: ""  # Path to your Kubernetes manifest file
+  DEPLOYMENT_MANIFEST_PATH: "k8s/deployment.yaml"  # Path to your Kubernetes manifest file
 
 jobs:
   buildImage:

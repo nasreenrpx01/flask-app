@@ -25,22 +25,6 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           auth-type: IDENTITY  # Ensure OIDC authentication is used
 
-      # 🔹 Log in to Azure Container Registry (ACR)
-      - name: Log in to ACR
-        run: az acr login --name mycontainerregistry
-
-      # 🔹 Build and Push Docker Image to ACR
-      - name: Build and Push Docker Image
-        run: |
-          docker build -t mycontainerregistry.azurecr.io/flask-app:${{ github.sha }} .
-          docker push mycontainerregistry.azurecr.io/flask-app:${{ github.sha }}
-
-      # 🔹 Get AKS Credentials
-      - name: Get AKS Credentials
-        run: az aks get-credentials --resource-group MyResourceGroup --name MyAKSCluster
-
-      # 🔹 Deploy to AKS
-      - name: Deploy to AKS
-        run: |
-          kubectl set image deployment/flask-app flask-app=mycontainerregistry.azurecr.io/flask-app:${{ github.sha }}
-          kubectl rollout status deployment/flask-app
+      # 🔹 Verify Authentication
+      - name: Verify Azure Login
+        run: az account show

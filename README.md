@@ -14,7 +14,7 @@ To deploy a Flask (Python) or Node.js web application on **Azure Kubernetes Serv
 ✅ **Ingress Controller & Load Balancer for Traffic Management**  
 ✅ **CI/CD Pipeline (GitHub Actions/Azure DevOps)**  
 ✅ **Monitoring (Prometheus, Grafana)**  
-✅ **Security (Azure Key Vault, RBAC)**  
+✅ **Security (RBAC)**  
 
 ---
 
